@@ -46,6 +46,11 @@ export class DataStore {
   }
 
   private generateId(): string {
+    // Use crypto.randomUUID for robust, collision-proof IDs
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    } 
+    // Fallback for environments without crypto.randomUUID (e.g., older Node.js or specific test setups)
     this.counter++;
     return `${Date.now()}-${this.counter}-${Math.random().toString(36).substring(2, 9)}`;
   }
@@ -107,9 +112,13 @@ export class DataStore {
   public updateContentItem(id: string, title: string, type: ContentItem['type'], content: string, lastModified: number): ContentItem {
     const index = this.contentItems.findIndex(item => item.id === id);
     if (index === -1) throw new AppError('Content item not found.');
+    
+    // Check for concurrent modification using the passed lastModified timestamp
     if (this.contentItems[index].lastModified > lastModified) {
       throw new AppError('Conflict: This content has been updated by another user. Please refresh and try again.');
     }
+
+    // Update the item and set a new lastModified timestamp
     this.contentItems[index] = { ...this.contentItems[index], title, type, content, lastModified: Date.now() };
     this.saveData();
     return this.contentItems[index];
