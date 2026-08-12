@@ -4,23 +4,25 @@ const dataStore = DataStore.getInstance();
 
 let currentUser: { id: string; username: string; role: 'Employee' | 'Manager' | 'Admin' } | null = null;
 
-const loginSection = document.getElementById('login-section') as HTMLElement;
-const appSection = document.getElementById('app-section') as HTMLElement;
-const usernameInput = document.getElementById('username-input') as HTMLInputElement;
-const loginButton = document.getElementById('login-button') as HTMLButtonElement;
-const logoutButton = document.getElementById('logout-button') as HTMLButtonElement;
-const currentUserSpan = document.getElementById('current-user') as HTMLSpanElement;
-const contentList = document.getElementById('content-list') as HTMLUListElement;
-const contentForm = document.getElementById('content-form') as HTMLFormElement;
-const contentTitleInput = document.getElementById('content-title') as HTMLInputElement;
-const contentTypeSelect = document.getElementById('content-type') as HTMLSelectElement;
-const contentTextInput = document.getElementById('content-text') as HTMLTextAreaElement;
-const contentSubmitButton = document.getElementById('content-submit') as HTMLButtonElement;
-const contentFormSection = document.getElementById('content-form-section') as HTMLElement;
-const errorMessageDiv = document.getElementById('error-message') as HTMLDivElement;
+// Root elements for dynamic UI rendering
+const body = document.body;
+let headerElement: HTMLElement;
+let loginSection: HTMLElement;
+let appSection: HTMLElement;
+let errorMessageDiv: HTMLDivElement;
 
-let editingContentId: string | null = null;
-let editingContentLastModified: number | null = null;
+// UI elements that will be dynamically created and referenced
+let usernameInput: HTMLInputElement;
+let loginButton: HTMLButtonElement;
+let logoutButton: HTMLButtonElement;
+let currentUserSpan: HTMLSpanElement;
+let contentList: HTMLUListElement;
+let contentForm: HTMLFormElement;
+let contentTitleInput: HTMLInputElement;
+let contentTypeSelect: HTMLSelectElement;
+let contentTextInput: HTMLTextAreaElement;
+let contentSubmitButton: HTMLButtonElement;
+let contentFormSection: HTMLElement;
 
 function showMessage(message: string, isError: boolean = false): void {
   errorMessageDiv.textContent = message;
@@ -29,6 +31,102 @@ function showMessage(message: string, isError: boolean = false): void {
   setTimeout(() => {
     errorMessageDiv.style.display = 'none';
   }, 5000);
+}
+
+function createHeader(): HTMLElement {
+  const header = document.createElement('header');
+  const h1 = document.createElement('h1');
+  h1.textContent = 'Employee Knowledge Portal';
+  header.appendChild(h1);
+  return header;
+}
+
+function createLoginSection(): HTMLElement {
+  const section = document.createElement('section');
+  section.id = 'login-section';
+  section.innerHTML = `
+    <h2>Login</h2>
+    <input type="text" id="username-input" placeholder="Enter your username">
+    <button id="login-button">Login / Register</button>
+  `;
+  usernameInput = section.querySelector('#username-input') as HTMLInputElement;
+  loginButton = section.querySelector('#login-button') as HTMLButtonElement;
+  loginButton.addEventListener('click', handleLogin);
+  return section;
+}
+
+function createAppSection(): HTMLElement {
+  const section = document.createElement('section');
+  section.id = 'app-section';
+  section.innerHTML = `
+    <div id="current-user-info">
+      <span>Logged in as: <span id="current-user"></span></span>
+      <button id="logout-button">Logout</button>
+    </div>
+    <section id="content-form-section"></section>
+    <section>
+      <h2>Knowledge Base</h2>
+      <ul id="content-list"></ul>
+    </section>
+  `;
+  currentUserSpan = section.querySelector('#current-user') as HTMLSpanElement;
+  logoutButton = section.querySelector('#logout-button') as HTMLButtonElement;
+  logoutButton.addEventListener('click', handleLogout);
+  contentFormSection = section.querySelector('#content-form-section') as HTMLElement;
+  contentList = section.querySelector('#content-list') as HTMLUListElement;
+  return section;
+}
+
+function createContentFormSection(): HTMLElement {
+  const section = document.createElement('section');
+  section.innerHTML = `
+    <h2>Manage Content</h2>
+    <form id="content-form">
+      <label for="content-title">Title:</label>
+      <input type="text" id="content-title" required>
+
+      <label for="content-type">Type:</label>
+      <select id="content-type">
+        <option value="Course">Course</option>
+        <option value="Policy">Policy</option>
+        <option value="Article">Article</option>
+      </select>
+
+      <label for="content-text">Content (supports Markdown, embedded media URLs):</label>
+      <textarea id="content-text" rows="10" required></textarea>
+
+      <button type="submit" id="content-submit">Create Content</button>
+    </form>
+  `;
+  contentForm = section.querySelector('#content-form') as HTMLFormElement;
+  contentTitleInput = section.querySelector('#content-title') as HTMLInputElement;
+  contentTypeSelect = section.querySelector('#content-type') as HTMLSelectElement;
+  contentTextInput = section.querySelector('#content-text') as HTMLTextAreaElement;
+  contentSubmitButton = section.querySelector('#content-submit') as HTMLButtonElement;
+  contentForm.addEventListener('submit', handleSubmitContent);
+  return section;
+}
+
+function createErrorMessageDiv(): HTMLDivElement {
+  const div = document.createElement('div');
+  div.id = 'error-message';
+  return div;
+}
+
+function renderUI(): void {
+  body.innerHTML = ''; // Clear existing body content
+
+  headerElement = createHeader();
+  loginSection = createLoginSection();
+  appSection = createAppSection();
+  errorMessageDiv = createErrorMessageDiv();
+
+  body.appendChild(headerElement);
+  body.appendChild(loginSection);
+  body.appendChild(appSection);
+  body.appendChild(errorMessageDiv);
+
+  setupUIForRole();
 }
 
 function renderContentItems(): void {
@@ -92,6 +190,9 @@ function viewContent(id: string): void {
   }
 }
 
+let editingContentId: string | null = null;
+let editingContentLastModified: number | null = null;
+
 function editContent(id: string): void {
   const item = dataStore.getContentItemById(id);
   if (item) {
@@ -140,7 +241,7 @@ function setupUIForRole(): void {
   if (!currentUser) {
     loginSection.style.display = 'flex';
     appSection.style.display = 'none';
-    contentFormSection.style.display = 'none';
+    contentFormSection.style.display = 'none'; // Ensure hidden when logged out
   } else {
     loginSection.style.display = 'none';
     appSection.style.display = 'block';
@@ -149,6 +250,10 @@ function setupUIForRole(): void {
     if (currentUser.role === 'Employee') {
       contentFormSection.style.display = 'none';
     } else {
+      // Only create content form section if it doesn't exist yet
+      if (!contentFormSection.querySelector('#content-form')) {
+        contentFormSection.appendChild(createContentFormSection());
+      }
       contentFormSection.style.display = 'block';
       contentSubmitButton.textContent = 'Create Content';
       contentTitleInput.value = '';
@@ -161,7 +266,7 @@ function setupUIForRole(): void {
   }
 }
 
-loginButton.addEventListener('click', () => {
+function handleLogin(): void {
   const username = usernameInput.value.trim();
   if (username) {
     let user = dataStore.getUserByUsername(username);
@@ -185,16 +290,16 @@ loginButton.addEventListener('click', () => {
   } else {
     showMessage('Please enter a username.', true);
   }
-});
+}
 
-logoutButton.addEventListener('click', () => {
+function handleLogout(): void {
   currentUser = null;
   usernameInput.value = '';
   setupUIForRole();
   showMessage('Logged out successfully.', false);
-});
+}
 
-contentForm.addEventListener('submit', (e) => {
+function handleSubmitContent(e: Event): void {
   e.preventDefault();
   if (!currentUser) return;
 
@@ -235,7 +340,7 @@ contentForm.addEventListener('submit', (e) => {
       showMessage('An unexpected error occurred.', true);
     }
   }
-});
+}
 
 // Initial setup
-setupUIForRole();
+renderUI();
