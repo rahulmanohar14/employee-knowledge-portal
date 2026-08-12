@@ -26,6 +26,14 @@ beforeEach(() => {
   // Reset the singleton instance before each test to ensure isolation
   // @ts-ignore
   DataStore.instance = undefined;
+
+  // Mock Date.now() to ensure distinct timestamps for updates within the same millisecond
+  // This is crucial for the `lastModified` check in updateContentItem
+  let mockDate = Date.now();
+  vi.spyOn(Date, 'now').mockImplementation(() => {
+    mockDate += 1000; // Increment by 1 second for each call
+    return mockDate;
+  });
 });
 
 afterEach(() => {
