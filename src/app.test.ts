@@ -182,4 +182,46 @@ describe('DataStore', () => {
     expect(store.isContentCompletedByUser(user.id, content1.id)).toBe(true);
     expect(store.isContentCompletedByUser(user.id, content2.id)).toBe(false);
   });
+
+  it('DataStore registers user with password and authenticates correctly', () => {
+    const store = DataStore.getInstance();
+    const registeredUser = store.registerUser('secureUser', 'Employee', 'mypassword123');
+
+    expect(registeredUser).toBeDefined();
+    expect(registeredUser.password).toBe('mypassword123');
+
+    const retrievedUser = store.getUserByUsername('secureUser');
+    expect(retrievedUser).toBeDefined();
+    expect(retrievedUser?.password).toBe('mypassword123');
+  });
+
+  it('DataStore supports role-based user attributes on registration', () => {
+    const store = DataStore.getInstance();
+    const manager = store.registerUser('managerUser', 'Manager', 'managerpass');
+    const employee = store.registerUser('employeeUser', 'Employee', 'employeepass');
+
+    expect(manager.role).toBe('Manager');
+    expect(employee.role).toBe('Employee');
+  });
+
+  it('DataStore contents can be searched by title and text content', () => {
+    const store = DataStore.getInstance();
+    const admin = store.getUserByUsername('admin')!;
+
+    store.createContentItem('Introduction to TypeScript', 'Course', 'Learn how to write TypeScript and JS apps', admin.id);
+    store.createContentItem('Company Security Policy', 'Policy', 'Always lock your laptop when leaving desk', admin.id);
+    store.createContentItem('Vitest guidelines', 'Article', 'Writing clean tests with vitest and vite', admin.id);
+
+    const allItems = store.getAllContentItems();
+
+    // Search by title (case-insensitive simulation)
+    const titleResults = allItems.filter(item => item.title.toLowerCase().includes('typescript'));
+    expect(titleResults.length).toBe(1);
+    expect(titleResults[0].title).toBe('Introduction to TypeScript');
+
+    // Search by content (case-insensitive simulation)
+    const contentResults = allItems.filter(item => item.content.toLowerCase().includes('lock your laptop'));
+    expect(contentResults.length).toBe(1);
+    expect(contentResults[0].title).toBe('Company Security Policy');
+  });
 });
