@@ -1,7 +1,8 @@
-interface User {
+export interface User {
   id: string;
   username: string;
   role: 'Employee' | 'Manager' | 'Admin';
+  password?: string; // Optional password for authentication
 }
 
 interface ContentItem {
@@ -72,15 +73,15 @@ export class DataStore {
 
     // Seed initial admin if no users exist
     if (this.users.length === 0) {
-      this.users.push({ id: this.generateId(), username: 'admin', role: 'Admin' });
+      this.users.push({ id: this.generateId(), username: 'admin', role: 'Admin', password: 'admin' });
       this.saveData();
     }
   }
 
-  public registerUser(username: string, role: User['role']): User {
+  public registerUser(username: string, role: User['role'], password?: string): User {
     if (!username || !role) throw new AppError('Username and role are required.');
     if (this.users.some(u => u.username === username)) throw new AppError('Username already exists.');
-    const newUser: User = { id: this.generateId(), username, role };
+    const newUser: User = { id: this.generateId(), username, role, password };
     this.users.push(newUser);
     this.saveData();
     return newUser;
